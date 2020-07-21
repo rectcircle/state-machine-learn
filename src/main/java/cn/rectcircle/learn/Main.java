@@ -1,11 +1,10 @@
 package cn.rectcircle.learn;
 
-import java.util.Set;
-
 import cn.rectcircle.learn.state.StateMachine;
 import cn.rectcircle.learn.state.StateMachineFactory;
 import cn.rectcircle.learn.use.MyThreadContext;
 import cn.rectcircle.learn.use.MyThreadEvent;
+import cn.rectcircle.learn.use.MyThreadEventType;
 import cn.rectcircle.learn.use.MyThreadState;
 
 /**
@@ -18,102 +17,76 @@ public class Main {
         // 模拟线程状态转换
         // https://juejin.im/post/5d8313b6518825313a7bba1e
 
-        var stateMachineFactory = new StateMachineFactory<MyThreadContext, MyThreadState, MyThreadEvent>();
+        var stateMachineFactory = new StateMachineFactory<MyThreadContext, MyThreadState, MyThreadEventType, MyThreadEvent>();
         // NEW -> RUNNABLE
-        stateMachineFactory.addTransition(MyThreadState.NEW, MyThreadState.RUNNABLE, (o, e) -> {
-            if (e == MyThreadEvent.CallStart) {
-                System.out.println("NEW -> RUNNABLE by event: " + e);
-                return MyThreadState.RUNNABLE;
-            }
-            return MyThreadState.TERMINATED;
+        stateMachineFactory.addTransition(MyThreadState.NEW, MyThreadState.RUNNABLE, MyThreadEventType.CallStart, (o, e) -> {
+            System.out.println("NEW -> RUNNABLE by event: " + e);
+            return MyThreadState.RUNNABLE;
         });
         // RUNNABLE -> RUNNING
-        stateMachineFactory.addTransition(MyThreadState.RUNNABLE, MyThreadState.RUNNING, (o, e) -> {
-            if (e == MyThreadEvent.ObtainCPU) {
-                System.out.println("RUNNABLE -> RUNNING by event: " + e);
-                return MyThreadState.RUNNING;
-            }
-            return MyThreadState.TERMINATED;
+        stateMachineFactory.addTransition(MyThreadState.RUNNABLE, MyThreadState.RUNNING, MyThreadEventType.ObtainCPU, (o, e) -> {
+            System.out.println("RUNNABLE -> RUNNING by event: " + e);
+            return MyThreadState.RUNNING;
         });
         // RUNNING -> BLOCKED | WAITING | TIMED_WAITING | TERMINATED
-        stateMachineFactory.addTransition(MyThreadState.RUNNING, Set.of(MyThreadState.BLOCKED, MyThreadState.WAITING,
-                MyThreadState.TIMED_WAITING, MyThreadState.TERMINATED), (o, e) -> {
-                    MyThreadState postState = null;
-                    if (e == MyThreadEvent.WaitingLock) {
-                        postState = MyThreadState.BLOCKED;
-                    } else if (e == MyThreadEvent.CallObjectWaitOrWaitIO) {
-                        postState = MyThreadState.WAITING;
-                    } else if (e == MyThreadEvent.CallWithTimeout) {
-                        postState = MyThreadState.TIMED_WAITING;
-                    } else if (e == MyThreadEvent.RunReturn) {
-                        postState = MyThreadState.TERMINATED;
-                    }
-                    if (postState != null) {
-                        System.out.println("RUNNING -> " + postState + " by event: " + e);
-                        return postState;
-                    }
-                    throw new RuntimeException("RUNNING not supported event: " + e);
-                });
+        stateMachineFactory.addTransition(MyThreadState.RUNNING, MyThreadState.BLOCKED, MyThreadEventType.WaitingLock, (o, e) -> {
+            System.out.println("RUNNING -> BLOCKED by event: " + e);
+            return MyThreadState.BLOCKED;
+        });
+        stateMachineFactory.addTransition(MyThreadState.RUNNING, MyThreadState.WAITING, MyThreadEventType.CallObjectWaitOrWaitIO, (o, e) -> {
+            System.out.println("RUNNING -> WAITING by event: " + e);
+            return MyThreadState.WAITING;
+        });
+        stateMachineFactory.addTransition(MyThreadState.RUNNING, MyThreadState.TIMED_WAITING, MyThreadEventType.CallWithTimeout, (o, e) -> {
+            System.out.println("RUNNING -> TIMED_WAITING by event: " + e);
+            return MyThreadState.TIMED_WAITING;
+        });
+        stateMachineFactory.addTransition(MyThreadState.RUNNING, MyThreadState.TERMINATED, MyThreadEventType.RunReturn, (o, e) -> {
+            System.out.println("RUNNING -> TERMINATED by event: " + e);
+            return MyThreadState.TERMINATED;
+        });
         // BLOCKED -> RUNNABLE | TERMINATED
-        stateMachineFactory.addTransition(MyThreadState.BLOCKED,
-                Set.of(MyThreadState.RUNNABLE, MyThreadState.TERMINATED), (o, e) -> {
-                    MyThreadState postState = null;
-                    if (e == MyThreadEvent.ObtainLock) {
-                        postState = MyThreadState.RUNNABLE;
-                    } else if (e == MyThreadEvent.CallInterrupt) {
-                        postState = MyThreadState.TERMINATED;
-                    }
-                    if (postState != null) {
-                        System.out.println("BLOCKED -> " + postState + " by event: " + e);
-                        return postState;
-                    }
-                    throw new RuntimeException("BLOCKED not supported event: " + e);
-                });
+        stateMachineFactory.addTransition(MyThreadState.BLOCKED, MyThreadState.RUNNABLE, MyThreadEventType.ObtainLock, (o, e) -> {
+            System.out.println("BLOCKED -> RUNNABLE by event: " + e);
+            return MyThreadState.RUNNABLE;
+        });
+        stateMachineFactory.addTransition(MyThreadState.BLOCKED, MyThreadState.TERMINATED, MyThreadEventType.CallInterrupt, (o, e) -> {
+            System.out.println("BLOCKED -> TERMINATED by event: " + e);
+            return MyThreadState.TERMINATED;
+        });
         // WAITING -> RUNNABLE | TERMINATED
-        stateMachineFactory.addTransition(MyThreadState.WAITING,
-                Set.of(MyThreadState.RUNNABLE, MyThreadState.TERMINATED), (o, e) -> {
-                    MyThreadState postState = null;
-                    if (e == MyThreadEvent.CallObjectNotifyOrIOReady) {
-                        postState = MyThreadState.RUNNABLE;
-                    } else if (e == MyThreadEvent.CallInterrupt) {
-                        postState = MyThreadState.TERMINATED;
-                    }
-                    if (postState != null) {
-                        System.out.println("WAITING -> " + postState + " by event: " + e);
-                        return postState;
-                    }
-                    throw new RuntimeException("WAITING not supported event: " + e);
-                });
+        stateMachineFactory.addTransition(MyThreadState.WAITING, MyThreadState.RUNNABLE, MyThreadEventType.CallObjectNotifyOrIOReady, (o, e) -> {
+            System.out.println("WAITING -> RUNNABLE by event: " + e);
+            return MyThreadState.RUNNABLE;
+        });
+        stateMachineFactory.addTransition(MyThreadState.WAITING, MyThreadState.TERMINATED, MyThreadEventType.CallInterrupt, (o, e) -> {
+            System.out.println("WAITING -> TERMINATED by event: " + e);
+            return MyThreadState.TERMINATED;
+        });
         // TIMED_WAITING -> RUNNABLE | TERMINATED
-        stateMachineFactory.addTransition(MyThreadState.TIMED_WAITING,
-                Set.of(MyThreadState.RUNNABLE, MyThreadState.TERMINATED), (o, e) -> {
-                    MyThreadState postState = null;
-                    if (e == MyThreadEvent.TimeoutOrReturn) {
-                        postState = MyThreadState.RUNNABLE;
-                    } else if (e == MyThreadEvent.CallInterrupt) {
-                        postState = MyThreadState.TERMINATED;
-                    }
-                    if (postState != null) {
-                        System.out.println("TIMED_WAITING -> " + postState + " by event: " + e);
-                        return postState;
-                    }
-                    throw new RuntimeException("TIMED_WAITING not supported event: " + e);
-                });
+        stateMachineFactory.addTransition(MyThreadState.TIMED_WAITING, MyThreadState.RUNNABLE, MyThreadEventType.TimeoutOrReturn, (o, e) -> {
+            System.out.println("TIMED_WAITING -> RUNNABLE by event: " + e);
+            return MyThreadState.RUNNABLE;
+        });
+        stateMachineFactory.addTransition(MyThreadState.TIMED_WAITING, MyThreadState.TERMINATED, MyThreadEventType.CallInterrupt, (o, e) -> {
+            System.out.println("TIMED_WAITING -> TERMINATED by event: " + e);
+            return MyThreadState.TERMINATED;
+        });
 
-        StateMachine<MyThreadState, MyThreadEvent> sm = stateMachineFactory.make(new MyThreadContext(), MyThreadState.NEW);
+        StateMachine<MyThreadState, MyThreadEventType, MyThreadEvent> sm = stateMachineFactory.make(new MyThreadContext(), MyThreadState.NEW);
 
-        sm.doTransition(MyThreadEvent.CallStart);
-        sm.doTransition(MyThreadEvent.ObtainCPU);
-        sm.doTransition(MyThreadEvent.WaitingLock);
-        sm.doTransition(MyThreadEvent.ObtainLock);
-        sm.doTransition(MyThreadEvent.ObtainCPU);
-        sm.doTransition(MyThreadEvent.CallObjectWaitOrWaitIO);
-        sm.doTransition(MyThreadEvent.CallObjectNotifyOrIOReady);
-        sm.doTransition(MyThreadEvent.ObtainCPU);
-        sm.doTransition(MyThreadEvent.CallWithTimeout);
-        sm.doTransition(MyThreadEvent.TimeoutOrReturn);
-        sm.doTransition(MyThreadEvent.ObtainCPU);
-        sm.doTransition(MyThreadEvent.RunReturn);
+        sm.doTransition(MyThreadEventType.CallStart, new MyThreadEvent(MyThreadEventType.CallStart));
+        sm.doTransition(MyThreadEventType.ObtainCPU, new MyThreadEvent(MyThreadEventType.ObtainCPU));
+        sm.doTransition(MyThreadEventType.WaitingLock, new MyThreadEvent(MyThreadEventType.WaitingLock));
+        sm.doTransition(MyThreadEventType.ObtainLock, new MyThreadEvent(MyThreadEventType.ObtainLock));
+        sm.doTransition(MyThreadEventType.ObtainCPU, new MyThreadEvent(MyThreadEventType.ObtainCPU));
+        sm.doTransition(MyThreadEventType.CallObjectWaitOrWaitIO, new MyThreadEvent(MyThreadEventType.CallObjectWaitOrWaitIO));
+        sm.doTransition(MyThreadEventType.CallObjectNotifyOrIOReady, new MyThreadEvent(MyThreadEventType.CallObjectNotifyOrIOReady));
+        sm.doTransition(MyThreadEventType.ObtainCPU, new MyThreadEvent(MyThreadEventType.ObtainCPU));
+        sm.doTransition(MyThreadEventType.CallWithTimeout, new MyThreadEvent(MyThreadEventType.CallWithTimeout));
+        sm.doTransition(MyThreadEventType.TimeoutOrReturn, new MyThreadEvent(MyThreadEventType.TimeoutOrReturn));
+        sm.doTransition(MyThreadEventType.ObtainCPU, new MyThreadEvent(MyThreadEventType.ObtainCPU));
+        sm.doTransition(MyThreadEventType.RunReturn, new MyThreadEvent(MyThreadEventType.RunReturn));
 
     }
 }

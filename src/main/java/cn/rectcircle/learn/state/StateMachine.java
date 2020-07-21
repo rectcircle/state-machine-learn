@@ -5,10 +5,11 @@ package cn.rectcircle.learn.state;
  * FSM 状态机接口
  * 
  * @param <S> 状态枚举类型
- * @param <E> 事件类型
+ * @param <T> 事件类型
+ * @param <E> 事件
  * @author
  */
-public interface StateMachine<S extends Enum<S>, E> {
+public interface StateMachine<S extends Enum<S>, T extends Enum<T>, E> {
 
     /**
      * 获取状态机的当前状态
@@ -18,8 +19,9 @@ public interface StateMachine<S extends Enum<S>, E> {
 
     /**
      * 做一次状态转换
+     * @param eventType
      * @param event
      * @return
      */
-    S doTransition(E event);
+    S doTransition(T eventType, E event);
 }
